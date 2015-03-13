@@ -31,7 +31,23 @@ SerialCommand::SerialCommand()
     commandCount(0),
     defaultHandler(NULL),
     term('\n'),           // default terminator for commands, newline character
-    last(NULL)
+    last(NULL),
+    _Serial(&Serial) // Default to Serial
+{
+  strcpy(delim, " "); // strtok_r needs a null-terminated string
+  clearBuffer();
+}
+
+/**
+ * Constructor makes sure some things are set.
+ */
+SerialCommand::SerialCommand(Stream &serial)
+  : commandList(NULL),
+    commandCount(0),
+    defaultHandler(NULL),
+    term('\n'),           // default terminator for commands, newline character
+    last(NULL),
+    _Serial(&serial)
 {
   strcpy(delim, " "); // strtok_r needs a null-terminated string
   clearBuffer();
@@ -44,10 +60,10 @@ SerialCommand::SerialCommand()
  */
 void SerialCommand::addCommand(const char *command, void (*function)()) {
   #ifdef SERIALCOMMAND_DEBUG
-    Serial.print("Adding command (");
-    Serial.print(commandCount);
-    Serial.print("): ");
-    Serial.println(command);
+    _Serial->print("Adding command (");
+    _Serial->print(commandCount);
+    _Serial->print("): ");
+    _Serial->println(command);
   #endif
 
   commandList = (SerialCommandCallback *) realloc(commandList, (commandCount + 1) * sizeof(SerialCommandCallback));
@@ -71,16 +87,16 @@ void SerialCommand::setDefaultHandler(void (*function)(const char *)) {
  * buffer for a prefix command, and calls handlers setup by addCommand() member
  */
 void SerialCommand::readSerial() {
-  while (Serial.available() > 0) {
-    char inChar = Serial.read();   // Read single available character, there may be more waiting
+  while (_Serial->available() > 0) {
+    char inChar = _Serial->read();   // Read single available character, there may be more waiting
     #ifdef SERIALCOMMAND_DEBUG
-      Serial.print(inChar);   // Echo back to serial stream
+      _Serial->print(inChar);   // Echo back to serial stream
     #endif
 
     if (inChar == term) {     // Check for the terminator (default '\r') meaning end of command
       #ifdef SERIALCOMMAND_DEBUG
-        Serial.print("Received: ");
-        Serial.println(buffer);
+        _Serial->print("Received: ");
+        _Serial->println(buffer);
       #endif
 
       char *command = strtok_r(buffer, delim, &last);   // Search for command at start of buffer
@@ -88,18 +104,18 @@ void SerialCommand::readSerial() {
         boolean matched = false;
         for (int i = 0; i < commandCount; i++) {
           #ifdef SERIALCOMMAND_DEBUG
-            Serial.print("Comparing [");
-            Serial.print(command);
-            Serial.print("] to [");
-            Serial.print(commandList[i].command);
-            Serial.println("]");
+            _Serial->print("Comparing [");
+            _Serial->print(command);
+            _Serial->print("] to [");
+            _Serial->print(commandList[i].command);
+            _Serial->println("]");
           #endif
 
           // Compare the found command against the list of known commands for a match
           if (strncmp(command, commandList[i].command, SERIALCOMMAND_MAXCOMMANDLENGTH) == 0) {
             #ifdef SERIALCOMMAND_DEBUG
-              Serial.print("Matched Command: ");
-              Serial.println(command);
+              _Serial->print("Matched Command: ");
+              _Serial->println(command);
             #endif
 
             // Execute the stored handler function for the command
@@ -120,7 +136,7 @@ void SerialCommand::readSerial() {
         buffer[bufPos] = '\0';      // Null terminate
       } else {
         #ifdef SERIALCOMMAND_DEBUG
-          Serial.println("Line buffer is full - increase SERIALCOMMAND_BUFFER");
+          _Serial->println("Line buffer is full - increase SERIALCOMMAND_BUFFER");
         #endif
       }
     }

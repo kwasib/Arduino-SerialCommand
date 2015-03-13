@@ -32,6 +32,7 @@
   #include <WProgram.h>
 #endif
 #include <string.h>
+//#include <Stream.h>
 
 // Size of the input buffer in bytes (maximum length of one command plus arguments)
 #define SERIALCOMMAND_BUFFER 32
@@ -45,6 +46,7 @@
 class SerialCommand {
   public:
     SerialCommand();      // Constructor
+    SerialCommand(Stream &serial);      // Serial Constructor.  Only relevant for Arduinos with support for multiple serial ports.
     void addCommand(const char *command, void(*function)());  // Add a command to the processing dictionary.
     void setDefaultHandler(void (*function)(const char *));   // A handler to call when no valid command received.
 
@@ -70,6 +72,7 @@ class SerialCommand {
     char buffer[SERIALCOMMAND_BUFFER + 1]; // Buffer of stored characters while waiting for terminator character
     byte bufPos;                        // Current position in the buffer
     char *last;                         // State variable used by strtok_r during processing
+    Stream* _Serial; // Pointer to serial
 };
 
 #endif //SerialCommand_h
